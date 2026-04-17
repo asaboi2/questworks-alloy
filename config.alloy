@@ -5,7 +5,7 @@
 
 prometheus.scrape "questworks" {
   targets = [
-    {"__address__" = "questbot.games",                  "service" = "questbot"},
+    {"__address__" = "www.questbot.games",              "service" = "questbot"},
     {"__address__" = "questai-forever.onrender.com",    "service" = "questai-backend"},
   ]
   scheme        = "https"
