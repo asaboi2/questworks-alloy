@@ -1,0 +1,28 @@
+// =============================================================
+// Grafana Alloy config — scrapes QuestBot + QuestAI /metrics
+// and pushes to Grafana Cloud Prometheus via remote_write.
+// =============================================================
+
+prometheus.scrape "questworks" {
+  targets = [
+    {"__address__" = "questbot.games",                  "service" = "questbot"},
+    {"__address__" = "questai-forever.onrender.com",    "service" = "questai-backend"},
+  ]
+  scheme        = "https"
+  metrics_path  = "/metrics"
+  scrape_interval = "60s"
+  scrape_timeout  = "15s"
+
+  forward_to = [prometheus.remote_write.grafana_cloud.receiver]
+}
+
+prometheus.remote_write "grafana_cloud" {
+  endpoint {
+    url = "https://prometheus-prod-67-prod-us-west-0.grafana.net/api/prom/push"
+
+    basic_auth {
+      username = "3124392"
+      password = env("GRAFANA_CLOUD_TOKEN")
+    }
+  }
+}
