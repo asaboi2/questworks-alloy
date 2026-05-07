@@ -1,6 +1,10 @@
 // =============================================================
 // Grafana Alloy config — scrapes QuestBot + QuestAI /metrics
 // and pushes to Grafana Cloud Prometheus via remote_write.
+//
+// Also self-scrapes alloy's own internal metrics so Grafana
+// Cloud can detect when alloy itself goes dark (QUE-130 P0
+// alert: absent(up{job="alloy_self"})).
 // =============================================================
 
 prometheus.scrape "questworks" {
@@ -10,6 +14,31 @@ prometheus.scrape "questworks" {
   ]
   scheme        = "https"
   metrics_path  = "/metrics"
+  scrape_interval = "60s"
+  scrape_timeout  = "15s"
+
+  forward_to = [prometheus.remote_write.grafana_cloud.receiver]
+}
+
+// -------------------------------------------------------------
+// QUE-130 — Alloy self-metric for forwarder-down detection
+// -------------------------------------------------------------
+// prometheus.exporter.self exposes alloy's internal metrics
+// (build_info, runtime stats, target_count, scrape stats, etc.).
+// Per the Grafana Alloy docs the component takes no arguments
+// and exposes a `.targets` attribute that we feed straight into
+// a scrape component. Scraping every 60s gives Grafana Cloud
+// Prometheus a continuous `up{job="alloy_self"}` series; when
+// alloy crashes or restart-loops the series goes stale and the
+// QUE-130 P0 rule `absent(up{job="alloy_self"})` evaluates to 1
+// within ~2m. Replaces the QUE-142 stdout heartbeat (which is
+// obsolete after the direct-push pivot — see QuestBot---Render
+// docs/observability-setup.md).
+prometheus.exporter.self "alloy_self" {}
+
+prometheus.scrape "alloy_self" {
+  targets         = prometheus.exporter.self.alloy_self.targets
+  job_name        = "alloy_self"
   scrape_interval = "60s"
   scrape_timeout  = "15s"
 
